@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">NoteIt</string>
+    <string name="title_activity_map">Map</string>
+    <string name="facebook_app_id">622463287936134</string>
+    <string name="title_activity_main">MainActivity</string>
+    <string name="dummy_button">Dummy Button</string>
+    <string name="dummy_content">DUMMY\nCONTENT</string>
+
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="map_search_default_text">Search...</string>
+</resources>
