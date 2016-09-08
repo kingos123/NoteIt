@@ -3,6 +3,7 @@ package com.noteit.connectivity;
 import com.noteit.R;
 import com.noteit.activities.NoteItApplication;
 import com.noteit.model.LatLng;
+import com.noteit.model.POI;
 import com.noteit.model.PlaceDetails;
 import com.noteit.model.PlaceDetailsResults;
 
@@ -28,7 +29,7 @@ public class DataFetcherImpl implements DataFetcher {
 
     private Logger logger = Logger.getLogger(getClass().getSimpleName());
 
-    public List<PlaceDetails.Review> getReviews(LatLng point, int radius) {
+    public List<POI> getPOIS(LatLng point, int radius) {
         final String key = NoteItApplication.getContext().getResources().getString(R.string.google_maps_key);
 //            String key = "AIzaSyCBsxOi58HMJdx4csBB2jd2ztVGQ0X_6uw";
 
@@ -45,7 +46,7 @@ public class DataFetcherImpl implements DataFetcher {
 
         final RestTemplate restTemplate = new RestClient().getRestTemplate();
 
-        List<PlaceDetails.Review> reviews = null;
+        List<POI> pois = null;
         final PlaceDetailsResults simpleResponse = restTemplate.getForObject(findAroundLocationUrl, PlaceDetailsResults.class);
         if (simpleResponse != null && simpleResponse.getResults() != null && simpleResponse.getResults().length > 0) {
             PlaceDetails[] results = simpleResponse.getResults();
@@ -59,15 +60,15 @@ public class DataFetcherImpl implements DataFetcher {
 
             for (int i = 0; i < results.length; i++) {
 
-                FutureTask future = getReviewsForPoint(restTemplate, reviewsUrl, results[i].place_id, key);
+                FutureTask future = getPOISForPoint(restTemplate, reviewsUrl, results[i].place_id, key);
 
                 executor.execute(future);
                 futures.add(future);
             }
-            reviews = new ArrayList<>();
+            pois = new ArrayList<>();
             for (FutureTask future : futures) {
                 try {
-                    Collections.addAll(reviews, (PlaceDetails.Review[]) future.get());
+                    Collections.addAll(pois, (POI) future.get());
                 } catch (Exception e) {
                     this.logger.log(Level.SEVERE, "failed to get reviews", e);
                 }
@@ -75,17 +76,27 @@ public class DataFetcherImpl implements DataFetcher {
             }
 
         }
-        return reviews;
+        return pois;
     }
 
-    private FutureTask getReviewsForPoint(final RestOperations restTemplate, final String reviewsUrl, final String placeid, final String key) {
-        FutureTask<PlaceDetails.Review[]> future =
-                new FutureTask<>(new Callable<PlaceDetails.Review[]>() {
-                    public PlaceDetails.Review[] call() {
+    private FutureTask getPOISForPoint(final RestOperations restTemplate, final String reviewsUrl, final String placeid, final String key) {
+        FutureTask<POI> future =
+                new FutureTask<>(new Callable<POI>() {
+                    public POI call() {
                         PlaceDetailsResults response = restTemplate.getForObject(String.format(reviewsUrl, placeid, key), PlaceDetailsResults.class);
                         PlaceDetails result = response.getResult();
                         if (result != null) {
-                            return result.reviews;
+                            POI poi = new POI();
+                            poi.setName(result.name);
+//                            poi.setImage(result.photos == null ? null: result.photos[0]);
+                            poi.setPoint(new LatLng(result.geometry.location.lat, result.geometry.location.lng));
+                            if (result.reviews != null && result.reviews.length > 0) {
+                                List<PlaceDetails.Review> reviews = new ArrayList<>();
+                                Collections.addAll(reviews, result.reviews);
+                                poi.setReviews(reviews);
+                            }
+
+                            return poi;
                         }
 
                         return null;

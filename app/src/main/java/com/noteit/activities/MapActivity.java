@@ -1,75 +1,62 @@
 package com.noteit.activities;
 
+import android.graphics.Color;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.app.FragmentActivity;
+import android.support.v4.app.FragmentManager;
+import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
+import android.view.Gravity;
+import android.view.View;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
+import android.widget.Button;
+import android.widget.TextSwitcher;
+import android.widget.TextView;
+import android.widget.ViewSwitcher;
 
-import com.fasterxml.jackson.annotation.JsonAutoDetect;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.introspect.VisibilityChecker;
+import com.androidmapsextensions.GoogleMap;
+import com.androidmapsextensions.MarkerOptions;
+import com.androidmapsextensions.OnMapReadyCallback;
+import com.androidmapsextensions.SupportMapFragment;
 import com.google.android.gms.common.api.Status;
 import com.google.android.gms.location.places.Place;
 import com.google.android.gms.location.places.ui.PlaceAutocompleteFragment;
 import com.google.android.gms.location.places.ui.PlaceSelectionListener;
 import com.google.android.gms.maps.CameraUpdateFactory;
-import com.google.android.gms.maps.GoogleMap;
-import com.google.android.gms.maps.OnMapReadyCallback;
-import com.google.android.gms.maps.SupportMapFragment;
-import com.google.android.gms.maps.model.MarkerOptions;
 import com.noteit.R;
 import com.noteit.connectivity.DataFetcher;
 import com.noteit.connectivity.DataFetcherImpl;
+import com.noteit.map.MapHandler;
 import com.noteit.model.LatLng;
-import com.noteit.model.PlaceDetails;
+import com.noteit.model.ModelToGoogle;
+import com.noteit.model.POI;
 
-import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.util.CollectionUtils;
 
 import java.util.List;
+
+//import com.google.android.gms.maps.GoogleMap;
 
 
 public class MapActivity extends FragmentActivity implements OnMapReadyCallback {
 
     private static final String TAG = MapActivity.class.getSimpleName();
+    int currentIndex = -1;
     private GoogleMap mMap;
-
-    public static void main(String args[]) {
-        String key = "AIzaSyCBsxOi58HMJdx4csBB2jd2ztVGQ0X_6uw";
-        try {
-
-            String type = "establishment";
-            String latLong = "40.758906,-73.985366";
-            String radius = "1000";
-            final String url =
-                    "https://maps.googleapis.com/maps/api/place/nearbysearch/json?key=" + key + "&location=" + latLong + "&radius=" + radius + "&type=" + type;
-            RestTemplate restTemplate = new RestTemplate();
-            ObjectMapper om = new ObjectMapper();
-            om.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-            om.setVisibilityChecker(VisibilityChecker.Std.defaultInstance().withFieldVisibility(JsonAutoDetect.Visibility.ANY));
-
-
-            MappingJackson2HttpMessageConverter c = new MappingJackson2HttpMessageConverter();
-            c.setObjectMapper(om);
-            restTemplate.getMessageConverters().add(c);
-
-            PlaceDetails response = restTemplate.getForObject(url, PlaceDetails.class);
-            System.out.println(response);
-        } catch (Exception e) {
-            Log.e("MainActivity", e.getMessage(), e);
-        }
-
-    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_map);
+        initTextSwitcher();
+        initCloseBtn();
+
         // Obtain the SupportMapFragment and get notified when the map is ready to be used.
-        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
-                .findFragmentById(R.id.map);
-        mapFragment.getMapAsync(this);
+        FragmentManager fragmentManager = getSupportFragmentManager();
+        SupportMapFragment mapFragment = (SupportMapFragment) fragmentManager.findFragmentById(R.id.map);
+        mapFragment.getExtendedMapAsync(this);
 
         PlaceAutocompleteFragment autocompleteFragment = (PlaceAutocompleteFragment)
                 getFragmentManager().findFragmentById(R.id.place_autocomplete_fragment);
@@ -78,7 +65,11 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback 
             @Override
             public void onPlaceSelected(Place place) {
 
-                Log.i(TAG, "Place: " + place.getName());
+
+                LatLng center = new LatLng(place.getLatLng().latitude, place.getLatLng().longitude);
+                new HttpRequestTask(center).execute();
+
+
             }
 
             @Override
@@ -101,33 +92,133 @@ public class MapActivity extends FragmentActivity implements OnMapReadyCallback 
     @Override
     public void onMapReady(GoogleMap googleMap) {
         this.mMap = googleMap;
-        // Add a marker in Sydney and move the camera
-        com.google.android.gms.maps.model.LatLng sydney = new com.google.android.gms.maps.model.LatLng(-34, 151);
-        this.mMap.addMarker(new MarkerOptions().position(sydney).title("Marker in Sydney"));
-        this.mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney));
-        new HttpRequestTask().execute();
+        this.mMap.getUiSettings().setZoomControlsEnabled(true);
+
+        com.google.android.gms.maps.model.LatLng timesquare = new com.google.android.gms.maps.model.LatLng(40.758976, -73.985152);
+        this.mMap.addMarker(new MarkerOptions().position(timesquare).title("Marker in Sydney"));
+        this.mMap.moveCamera(CameraUpdateFactory.newLatLng(timesquare));
+        this.mMap.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
+            @Override
+            public boolean onMarkerClick(com.androidmapsextensions.Marker marker) {
+                final POI poi = marker.getData();
+                if (poi.getReviews() != null && poi.getReviews().size() > 0) {
+
+                    findViewById(R.id.reviews_popup).setVisibility(View.VISIBLE);
+
+                    final TextSwitcher textSwitcher = (TextSwitcher) findViewById(R.id.textSwitcher);
+
+                    MapActivity.this.currentIndex++;
+                    String txt = poi.getReviews().get(MapActivity.this.currentIndex).text;
+                    textSwitcher.setText(txt);
+                    initBtnNext(textSwitcher, poi);
+                    initBtnBack(textSwitcher, poi);
+
+
+                }
+                return true;
+            }
+        });
+        new HttpRequestTask(ModelToGoogle.convertLatLng(timesquare)).execute();
     }
 
-    private class HttpRequestTask extends AsyncTask<Void, Void, List<PlaceDetails.Review>> {
-        @Override
-        protected List<PlaceDetails.Review> doInBackground(Void... params) {
-            LatLng point = new LatLng(40.758906, -73.985366);
-            int radius = 1000;
-            DataFetcher dataFetcher = new DataFetcherImpl();
-            List<PlaceDetails.Review> reviews = dataFetcher.getReviews(point, radius);
-            return reviews;
+    private void initBtnBack(final TextSwitcher textSwitcher, final POI poi) {
+        Button btnBack = (Button) findViewById(R.id.buttonBack);
+        btnBack.setOnClickListener(new View.OnClickListener() {
+
+            public void onClick(View v) {
+
+                if (MapActivity.this.currentIndex > 0) {
+                    MapActivity.this.currentIndex--;
+                    if (MapActivity.this.currentIndex == poi.getReviews().size()) {
+                        MapActivity.this.currentIndex = 0;
+                    }
+                    String txt = poi.getReviews().get(MapActivity.this.currentIndex).text;
+
+                    textSwitcher.setText(txt);
+                }
+
+            }
+        });
+    }
+
+    private void initCloseBtn() {
+        Button btnClose = (Button) findViewById(R.id.buttonClose);
+        btnClose.setOnClickListener(new View.OnClickListener() {
+
+            public void onClick(View v) {
+
+                findViewById(R.id.reviews_popup).setVisibility(View.INVISIBLE);
+            }
+        });
+    }
+
+    private void initBtnNext(final TextSwitcher textSwitcher, final POI poi) {
+        Button btnNext = (Button) findViewById(R.id.buttonNext);
+        btnNext.setOnClickListener(new View.OnClickListener() {
+
+            public void onClick(View v) {
+
+                MapActivity.this.currentIndex++;
+                if (MapActivity.this.currentIndex == poi.getReviews().size()) {
+                    MapActivity.this.currentIndex = 0;
+                }
+                String txt = poi.getReviews().get(MapActivity.this.currentIndex).text;
+
+                textSwitcher.setText(txt);
+            }
+        });
+    }
+
+    private void initTextSwitcher() {
+
+        TextSwitcher textSwitcher = (TextSwitcher) findViewById(R.id.textSwitcher);
+        textSwitcher.setFactory(new ViewSwitcher.ViewFactory() {
+
+            public View makeView() {
+                TextView myText = new TextView(MapActivity.this);
+                myText.setBackgroundColor(Color.WHITE);
+                myText.setGravity(Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+                myText.setMaxLines(3);
+                myText.setVerticalScrollBarEnabled(true);
+                myText.setTextSize(20);
+                myText.setTextColor(Color.BLUE);
+                myText.setMovementMethod(new ScrollingMovementMethod());
+                return myText;
+            }
+        });
+
+        // Declare the in and out animations and initialize them
+        Animation in = AnimationUtils.loadAnimation(MapActivity.this, android.R.anim.slide_in_left);
+        Animation out = AnimationUtils.loadAnimation(MapActivity.this, android.R.anim.slide_out_right);
+
+        // set the animation type of textSwitcher
+        textSwitcher.setInAnimation(in);
+        textSwitcher.setOutAnimation(out);
+
+
+    }
+
+    private class HttpRequestTask extends AsyncTask<Void, Void, List<POI>> {
+        private LatLng point;
+
+        public HttpRequestTask(LatLng point) {
+            this.point = point;
         }
 
         @Override
-        protected void onPostExecute(List<PlaceDetails.Review> reviews) {
+        protected List<POI> doInBackground(Void... params) {
+            int radius = 1000;
+            DataFetcher dataFetcher = new DataFetcherImpl();
+            List<POI> pois = dataFetcher.getPOIS(this.point, radius);
+            return pois;
+        }
 
+        @Override
+        protected void onPostExecute(List<POI> pois) {
 
-            for (int i = 0; i < reviews.size(); i++) {
-                System.out.println("author name: " + reviews.get(i).author_name);
-                System.out.println("review text: " + reviews.get(i).text);
-                System.out.println("rating: " + reviews.get(i).rating);
+            if (!CollectionUtils.isEmpty(pois)) {
+                MapHandler.setMarkers(MapActivity.this.mMap, this.point, pois);
             }
-
 
         }
 

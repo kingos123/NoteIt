@@ -36,4 +36,5 @@ dependencies {
     compile 'com.facebook.android:facebook-android-sdk:[4,5)'
     compile 'org.springframework.android:spring-android-rest-template:2.0.0.M1'
     compile 'com.fasterxml.jackson.core:jackson-databind:2.3.2'
+    compile 'com.androidmapsextensions:android-maps-extensions:2.2.0'
 }

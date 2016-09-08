@@ -10,24 +10,13 @@
     <fragment xmlns:android="http://schemas.android.com/apk/res/android"
         xmlns:tools="http://schemas.android.com/tools"
         android:id="@+id/map"
-        android:name="com.google.android.gms.maps.SupportMapFragment"
+        android:name="com.androidmapsextensions.SupportMapFragment"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         tools:context=".activities.MapActivity"
         tools:layout="@layout/activity_map" />
 
 
-    <!--
-        <AutoCompleteTextView
-            android:id="@+id/mapSearchBar"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginLeft="@dimen/place_autocomplete_separator_start"
-            android:layout_marginRight="@dimen/place_autocomplete_separator_start"
-            android:layout_marginTop="@dimen/place_autocomplete_separator_start"
-            android:hint="@string/place_autocomplete_search_hint"
-            android:singleLine="true" />
-    -->
     <fragment
         android:id="@+id/place_autocomplete_fragment"
         android:name="com.google.android.gms.location.places.ui.PlaceAutocompleteFragment"
@@ -38,6 +27,57 @@
         android:layout_marginTop="@dimen/place_autocomplete_separator_start"
         android:hint="@string/place_autocomplete_search_hint"
         android:singleLine="true" />
+
+    <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        android:id="@+id/reviews_popup"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@android:color/transparent"
+        android:orientation="vertical"
+        android:visibility="invisible">
+
+        <TextSwitcher
+            android:id="@+id/textSwitcher"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginLeft="20dp"
+            android:layout_marginRight="20dp"
+            android:layout_marginTop="50dp"
+            android:visibility="visible" />
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="150dp"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/buttonBack"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+
+                android:text="BACK" />
+
+            <Button
+                android:id="@+id/buttonClose"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+
+                android:layout_marginLeft="10dp"
+                android:layout_marginRight="10dp"
+                android:text="CLOSE" />
+
+            <Button
+                android:id="@+id/buttonNext"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+
+                android:text="NEXT" />
+        </LinearLayout>
+
+    </LinearLayout>
 
 </RelativeLayout>
 
